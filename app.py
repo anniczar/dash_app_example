@@ -64,7 +64,7 @@ app.layout = html.Div([
                 value='Value added, gross'
             ),
             dcc.RadioItems(
-                id='xaxis-type',
+                id='yaxis-type',
                 options=[{'label': i, 'value': i} for i in ['Linear', 'Log']],
                 value='Linear',
                 labelStyle={'display': 'inline-block'}
