@@ -119,6 +119,7 @@ app.layout = html.Div([
      dash.dependencies.Input('yaxis-type','value'),
      dash.dependencies.Input('year--slider', 'value')])
 def update_graph(xaxis_column_name, yaxis_column_name,
+                 xaxis_type, yaxis_type,
                  year_value):
     dff = df[df['TIME'] == year_value]
     
