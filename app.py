@@ -115,6 +115,8 @@ app.layout = html.Div([
     dash.dependencies.Output('indicator-graphic', 'figure'),
     [dash.dependencies.Input('xaxis-column', 'value'),
      dash.dependencies.Input('yaxis-column', 'value'),
+     dash.dependencies.Input('xaxis-type','value'),
+     dash.dependencies.Input('yaxis-type','value'),
      dash.dependencies.Input('year--slider', 'value')])
 def update_graph(xaxis_column_name, yaxis_column_name,
                  year_value):
