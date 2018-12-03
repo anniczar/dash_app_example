@@ -141,11 +141,11 @@ def update_graph(xaxis_column_name, yaxis_column_name,
         'layout': go.Layout(
             xaxis={
                 'title': xaxis_column_name,
-                'type': 'linear' 
+                'type': 'linear' if xaxis_type == 'Linear' else 'log'
             },
             yaxis={
                 'title': yaxis_column_name,
-                'type': 'linear' 
+                'type': 'linear' if yaxis_type == 'Linear' else 'log'
             },
             margin={'l': 40, 'b': 40, 't': 10, 'r': 0},
             hovermode='closest'
