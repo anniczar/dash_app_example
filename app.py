@@ -1,263 +1,181 @@
-{
- "cells": [
-  {
-   "cell_type": "code",
-   "execution_count": 1,
-   "metadata": {},
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "     TIME      GEO                                       UNIT  \\\n",
-      "780  2008  Belgium  Chain linked volumes (2010), million euro   \n",
-      "781  2008  Belgium  Chain linked volumes (2010), million euro   \n",
-      "782  2008  Belgium  Chain linked volumes (2010), million euro   \n",
-      "783  2008  Belgium  Chain linked volumes (2010), million euro   \n",
-      "784  2008  Belgium  Chain linked volumes (2010), million euro   \n",
-      "\n",
-      "                                               NA_ITEM     Value  \n",
-      "780            Gross domestic product at market prices  363540.1  \n",
-      "781                                 Value added, gross  325703.6  \n",
-      "782                      Final consumption expenditure  268044.3  \n",
-      "783  Final consumption expenditure of general gover...   84240.4  \n",
-      "784  Individual consumption expenditure of general ...   53003.4  \n"
-     ]
+#!/usr/bin/env python
+# coding: utf-8
+
+# In[5]:
+
+
+import dash
+#to create apps 
+import dash_core_components as dcc
+import dash_html_components as html
+import plotly.graph_objs as go
+import pandas as pd
+
+app = dash.Dash(__name__)
+server = app.server
+
+df = pd.read_csv('nama_10_gdp_1_Data.csv', na_values=':',usecols=["TIME","UNIT","GEO","NA_ITEM","Value"])
+df['Value']=df['Value'].str.replace(',','').astype(float)
+df=df.dropna()
+
+#~ for dropping values
+
+df=df[~df.GEO.str.contains("Eur") ==True]
+df=df[~df.UNIT.str.contains("Current prices, million euro")]
+df=df[~df.UNIT.str.contains("Chain linked volumes, index 2010=100")]
+
+
+
+
+
+
+
+print(df.head())
+
+
+# In[2]:
+
+
+#define dropdown list
+available_indicators = df['NA_ITEM'].unique()
+GEOS=df['GEO'].unique()
+app.layout = html.Div([
+    html.Div([
+
+        html.Div([
+           dcc.Dropdown(        #dropdown menu for x axis
+                id='xaxis-column',
+                options=[{'label': i, 'value': i} for i in available_indicators],
+                value='Gross domestic product at market prices'
+            ),
+            
+        ],
+        style={'width': '48%', 'display': 'inline-block'}),
+
+        html.Div([    
+            dcc.Dropdown(          #dropdown menu for y axis
+                id='yaxis-column',
+                options=[{'label': i, 'value': i} for i in available_indicators],
+                value='Value added, gross'
+            ),
+            
+        ],style={'width': '48%', 'float': 'right', 'display': 'inline-block'})
+    ]),
+
+    dcc.Graph(id='indicator-graphic'), #what the fuck is this: graph one?
+
+    
+#insert slider for different years 
+    dcc.Slider(
+        id='year--slider',
+        min=df['TIME'].min(),
+        max=df['TIME'].max(),
+        value=df['TIME'].max(),
+        step=None,
+        marks={str(year): str(year) for year in df['TIME'].unique()}
+    ),
+    
+    html.H1('\n'), #line break
+
+    html.Div([
+        html.Div([
+            dcc.Dropdown( #dropdown for content displayed
+                id='country',
+                options=[{'label': i, 'value': i} for i in GEOS],
+                value='European Union (current composition)'
+            ),
+            
+        ],
+        style={'width': '48%', 'display': 'inline-block'}),
+
+        html.Div([ #dropdown for y axis
+            dcc.Dropdown(
+                id='yaxis-column-b',
+                options=[{'label': i, 'value': i} for i in available_indicators],
+                value='Gross domestic product at market prices'
+            ),
+            
+        ],style={'width': '48%', 'float': 'right', 'display': 'inline-block'})
+    ]),
+    dcc.Graph(id='indicator-graphic-b')
+    
+])
+#why callback here and not before ?
+@app.callback(   #code that is passed as an argument to other code that is expected to call back (execute) the argument at a given time.
+    dash.dependencies.Output('indicator-graphic', 'figure'),
+    [dash.dependencies.Input('xaxis-column', 'value'),
+     dash.dependencies.Input('yaxis-column', 'value'),
+     dash.dependencies.Input('year--slider', 'value')])
+def update_graph(xaxis_column_name, yaxis_column_name,
+                 year_value):
+    dff = df[df['TIME'] == year_value]
+    
+    return {
+        'data': [go.Scatter(
+            x=dff[(dff['NA_ITEM'] == xaxis_column_name) &( dff['GEO']==str(i) )]['Value'],
+            y=dff[(dff['NA_ITEM'] == yaxis_column_name) &( dff['GEO']==str(i))]['Value'],
+            text=dff[dff['GEO']==str(i)]['GEO'],
+            mode='markers',
+            marker={
+                'size': 15,
+                'opacity': 0.5,
+                'line': {'width': 0.5, 'color': 'white'}
+            },
+            name=i[:20]
+            
+        )for i in dff.GEO.unique()
+                ],
+        'layout': go.Layout(
+            xaxis={
+                'title': xaxis_column_name,
+                'type': 'linear' 
+            },
+            yaxis={
+                'title': yaxis_column_name,
+                'type': 'linear' 
+            },
+            margin={'l': 40, 'b': 40, 't': 10, 'r': 0},
+            hovermode='closest'
+        )
     }
-   ],
-   "source": [
-    "import dash\n",
-    "#to create apps \n",
-    "import dash_core_components as dcc\n",
-    "import dash_html_components as html\n",
-    "import plotly.graph_objs as go\n",
-    "import pandas as pd\n",
-    "\n",
-    "app = dash.Dash(__name__)\n",
-    "server = app.server\n",
-    "\n",
-    "df = pd.read_csv('nama_10_gdp_1_Data.csv', na_values=':',usecols=[\"TIME\",\"UNIT\",\"GEO\",\"NA_ITEM\",\"Value\"])\n",
-    "df['Value']=df['Value'].str.replace(',','').astype(float)\n",
-    "df=df.dropna()\n",
-    "\n",
-    "#~ for dropping values\n",
-    "\n",
-    "df=df[~df.GEO.str.contains(\"Eur\") ==True]\n",
-    "df=df[~df.UNIT.str.contains(\"Current prices, million euro\")]\n",
-    "df=df[~df.UNIT.str.contains(\"Chain linked volumes, index 2010=100\")]\n",
-    "\n",
-    "\n",
-    "\n",
-    "\n",
-    "\n",
-    "\n",
-    "\n",
-    "print(df.head())"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 2,
-   "metadata": {},
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      " * Serving Flask app \"__main__\" (lazy loading)\n",
-      " * Environment: production\n",
-      "   WARNING: Do not use the development server in a production environment.\n",
-      "   Use a production WSGI server instead.\n",
-      " * Debug mode: off\n"
-     ]
-    },
-    {
-     "ename": "OSError",
-     "evalue": "[Errno 48] Address already in use",
-     "output_type": "error",
-     "traceback": [
-      "\u001b[0;31m---------------------------------------------------------------------------\u001b[0m",
-      "\u001b[0;31mOSError\u001b[0m                                   Traceback (most recent call last)",
-      "\u001b[0;32m<ipython-input-2-896d7486be0f>\u001b[0m in \u001b[0;36m<module>\u001b[0;34m()\u001b[0m\n\u001b[1;32m    134\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    135\u001b[0m \u001b[0;32mif\u001b[0m \u001b[0m__name__\u001b[0m \u001b[0;34m==\u001b[0m \u001b[0;34m'__main__'\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m--> 136\u001b[0;31m     \u001b[0mapp\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mrun_server\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m",
-      "\u001b[0;32m/anaconda3/envs/py36/lib/python3.6/site-packages/dash/dash.py\u001b[0m in \u001b[0;36mrun_server\u001b[0;34m(self, port, debug, **flask_run_options)\u001b[0m\n\u001b[1;32m    549\u001b[0m                    \u001b[0mdebug\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0;32mFalse\u001b[0m\u001b[0;34m,\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    550\u001b[0m                    **flask_run_options):\n\u001b[0;32m--> 551\u001b[0;31m         \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mserver\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mrun\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mport\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0mport\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mdebug\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0mdebug\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0;34m**\u001b[0m\u001b[0mflask_run_options\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m",
-      "\u001b[0;32m/anaconda3/envs/py36/lib/python3.6/site-packages/flask/app.py\u001b[0m in \u001b[0;36mrun\u001b[0;34m(self, host, port, debug, load_dotenv, **options)\u001b[0m\n\u001b[1;32m    941\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    942\u001b[0m         \u001b[0;32mtry\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m--> 943\u001b[0;31m             \u001b[0mrun_simple\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mhost\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mport\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0;34m**\u001b[0m\u001b[0moptions\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m    944\u001b[0m         \u001b[0;32mfinally\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    945\u001b[0m             \u001b[0;31m# reset the first request information if the development server\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n",
-      "\u001b[0;32m/anaconda3/envs/py36/lib/python3.6/site-packages/werkzeug/serving.py\u001b[0m in \u001b[0;36mrun_simple\u001b[0;34m(hostname, port, application, use_reloader, use_debugger, use_evalex, extra_files, reloader_interval, reloader_type, threaded, processes, request_handler, static_files, passthrough_errors, ssl_context)\u001b[0m\n\u001b[1;32m    812\u001b[0m                           reloader_type)\n\u001b[1;32m    813\u001b[0m     \u001b[0;32melse\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m--> 814\u001b[0;31m         \u001b[0minner\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m    815\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    816\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n",
-      "\u001b[0;32m/anaconda3/envs/py36/lib/python3.6/site-packages/werkzeug/serving.py\u001b[0m in \u001b[0;36minner\u001b[0;34m()\u001b[0m\n\u001b[1;32m    772\u001b[0m                           \u001b[0mprocesses\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mrequest_handler\u001b[0m\u001b[0;34m,\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    773\u001b[0m                           \u001b[0mpassthrough_errors\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mssl_context\u001b[0m\u001b[0;34m,\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m--> 774\u001b[0;31m                           fd=fd)\n\u001b[0m\u001b[1;32m    775\u001b[0m         \u001b[0;32mif\u001b[0m \u001b[0mfd\u001b[0m \u001b[0;32mis\u001b[0m \u001b[0;32mNone\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    776\u001b[0m             \u001b[0mlog_startup\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0msrv\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0msocket\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n",
-      "\u001b[0;32m/anaconda3/envs/py36/lib/python3.6/site-packages/werkzeug/serving.py\u001b[0m in \u001b[0;36mmake_server\u001b[0;34m(host, port, app, threaded, processes, request_handler, passthrough_errors, ssl_context, fd)\u001b[0m\n\u001b[1;32m    658\u001b[0m     \u001b[0;32melif\u001b[0m \u001b[0mthreaded\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    659\u001b[0m         return ThreadedWSGIServer(host, port, app, request_handler,\n\u001b[0;32m--> 660\u001b[0;31m                                   passthrough_errors, ssl_context, fd=fd)\n\u001b[0m\u001b[1;32m    661\u001b[0m     \u001b[0;32melif\u001b[0m \u001b[0mprocesses\u001b[0m \u001b[0;34m>\u001b[0m \u001b[0;36m1\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    662\u001b[0m         return ForkingWSGIServer(host, port, app, processes, request_handler,\n",
-      "\u001b[0;32m/anaconda3/envs/py36/lib/python3.6/site-packages/werkzeug/serving.py\u001b[0m in \u001b[0;36m__init__\u001b[0;34m(self, host, port, app, handler, passthrough_errors, ssl_context, fd)\u001b[0m\n\u001b[1;32m    575\u001b[0m             \u001b[0mport\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0;36m0\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    576\u001b[0m         HTTPServer.__init__(self, get_sockaddr(host, int(port),\n\u001b[0;32m--> 577\u001b[0;31m                                                self.address_family), handler)\n\u001b[0m\u001b[1;32m    578\u001b[0m         \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mapp\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mapp\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    579\u001b[0m         \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mpassthrough_errors\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mpassthrough_errors\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n",
-      "\u001b[0;32m/anaconda3/envs/py36/lib/python3.6/socketserver.py\u001b[0m in \u001b[0;36m__init__\u001b[0;34m(self, server_address, RequestHandlerClass, bind_and_activate)\u001b[0m\n\u001b[1;32m    451\u001b[0m         \u001b[0;32mif\u001b[0m \u001b[0mbind_and_activate\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    452\u001b[0m             \u001b[0;32mtry\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m--> 453\u001b[0;31m                 \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mserver_bind\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m    454\u001b[0m                 \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mserver_activate\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    455\u001b[0m             \u001b[0;32mexcept\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n",
-      "\u001b[0;32m/anaconda3/envs/py36/lib/python3.6/http/server.py\u001b[0m in \u001b[0;36mserver_bind\u001b[0;34m(self)\u001b[0m\n\u001b[1;32m    134\u001b[0m     \u001b[0;32mdef\u001b[0m \u001b[0mserver_bind\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mself\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    135\u001b[0m         \u001b[0;34m\"\"\"Override server_bind to store the server name.\"\"\"\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m--> 136\u001b[0;31m         \u001b[0msocketserver\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mTCPServer\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mserver_bind\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mself\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m    137\u001b[0m         \u001b[0mhost\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mport\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mserver_address\u001b[0m\u001b[0;34m[\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;36m2\u001b[0m\u001b[0;34m]\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    138\u001b[0m         \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mserver_name\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0msocket\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mgetfqdn\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mhost\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n",
-      "\u001b[0;32m/anaconda3/envs/py36/lib/python3.6/socketserver.py\u001b[0m in \u001b[0;36mserver_bind\u001b[0;34m(self)\u001b[0m\n\u001b[1;32m    465\u001b[0m         \u001b[0;32mif\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mallow_reuse_address\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    466\u001b[0m             \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0msocket\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0msetsockopt\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0msocket\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mSOL_SOCKET\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0msocket\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mSO_REUSEADDR\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0;36m1\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m--> 467\u001b[0;31m         \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0msocket\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mbind\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mserver_address\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m    468\u001b[0m         \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mserver_address\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0msocket\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mgetsockname\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    469\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n",
-      "\u001b[0;31mOSError\u001b[0m: [Errno 48] Address already in use"
-     ]
+
+@app.callback(
+    dash.dependencies.Output('indicator-graphic-b', 'figure'),
+    [dash.dependencies.Input('country', 'value'),
+     dash.dependencies.Input('yaxis-column-b', 'value')])
+def update_graph_b(country_name, yaxis_column_b_name,):
+    dff = df[df['GEO'] == country_name]
+    
+    return {
+        'data': [go.Scatter(
+            x=dff[dff['NA_ITEM'] == yaxis_column_b_name]['TIME'],
+            y=dff[dff['NA_ITEM'] == yaxis_column_b_name]['Value'],
+            text=dff[dff['NA_ITEM'] == yaxis_column_b_name]['Value'],
+            mode='lines'
+            
+            
+        )],
+        'layout': go.Layout(
+            xaxis={
+                'title': 'YEAR',
+                'type': 'linear' 
+            },
+            yaxis={
+                'title': yaxis_column_b_name,
+                'type': 'linear' 
+            },
+            margin={'l': 40, 'b': 40, 't': 10, 'r': 0},
+            hovermode='closest'
+        )
     }
-   ],
-   "source": [
-    "#define dropdown list\n",
-    "available_indicators = df['NA_ITEM'].unique()\n",
-    "GEOS=df['GEO'].unique()\n",
-    "app.layout = html.Div([\n",
-    "    html.Div([\n",
-    "\n",
-    "        html.Div([\n",
-    "           dcc.Dropdown(        #dropdown menu for x axis\n",
-    "                id='xaxis-column',\n",
-    "                options=[{'label': i, 'value': i} for i in available_indicators],\n",
-    "                value='Gross domestic product at market prices'\n",
-    "            ),\n",
-    "            \n",
-    "        ],\n",
-    "        style={'width': '48%', 'display': 'inline-block'}),\n",
-    "\n",
-    "        html.Div([    \n",
-    "            dcc.Dropdown(          #dropdown menu for y axis\n",
-    "                id='yaxis-column',\n",
-    "                options=[{'label': i, 'value': i} for i in available_indicators],\n",
-    "                value='Value added, gross'\n",
-    "            ),\n",
-    "            \n",
-    "        ],style={'width': '48%', 'float': 'right', 'display': 'inline-block'})\n",
-    "    ]),\n",
-    "\n",
-    "    dcc.Graph(id='indicator-graphic'), #what the fuck is this: graph one?\n",
-    "\n",
-    "    \n",
-    "#insert slider for different years \n",
-    "    dcc.Slider(\n",
-    "        id='year--slider',\n",
-    "        min=df['TIME'].min(),\n",
-    "        max=df['TIME'].max(),\n",
-    "        value=df['TIME'].max(),\n",
-    "        step=None,\n",
-    "        marks={str(year): str(year) for year in df['TIME'].unique()}\n",
-    "    ),\n",
-    "    \n",
-    "    html.H1('\\n'), #line break\n",
-    "\n",
-    "    html.Div([\n",
-    "        html.Div([\n",
-    "            dcc.Dropdown( #dropdown for content displayed\n",
-    "                id='country',\n",
-    "                options=[{'label': i, 'value': i} for i in GEOS],\n",
-    "                value='European Union (current composition)'\n",
-    "            ),\n",
-    "            \n",
-    "        ],\n",
-    "        style={'width': '48%', 'display': 'inline-block'}),\n",
-    "\n",
-    "        html.Div([ #dropdown for y axis\n",
-    "            dcc.Dropdown(\n",
-    "                id='yaxis-column-b',\n",
-    "                options=[{'label': i, 'value': i} for i in available_indicators],\n",
-    "                value='Gross domestic product at market prices'\n",
-    "            ),\n",
-    "            \n",
-    "        ],style={'width': '48%', 'float': 'right', 'display': 'inline-block'})\n",
-    "    ]),\n",
-    "    dcc.Graph(id='indicator-graphic-b')\n",
-    "    \n",
-    "])\n",
-    "#why callback here and not before ?\n",
-    "@app.callback(   #code that is passed as an argument to other code that is expected to call back (execute) the argument at a given time.\n",
-    "    dash.dependencies.Output('indicator-graphic', 'figure'),\n",
-    "    [dash.dependencies.Input('xaxis-column', 'value'),\n",
-    "     dash.dependencies.Input('yaxis-column', 'value'),\n",
-    "     dash.dependencies.Input('year--slider', 'value')])\n",
-    "def update_graph(xaxis_column_name, yaxis_column_name,\n",
-    "                 year_value):\n",
-    "    dff = df[df['TIME'] == year_value]\n",
-    "    \n",
-    "    return {\n",
-    "        'data': [go.Scatter(\n",
-    "            x=dff[(dff['NA_ITEM'] == xaxis_column_name) &( dff['GEO']==str(i) )]['Value'],\n",
-    "            y=dff[(dff['NA_ITEM'] == yaxis_column_name) &( dff['GEO']==str(i))]['Value'],\n",
-    "            text=dff[dff['GEO']==str(i)]['GEO'],\n",
-    "            mode='markers',\n",
-    "            marker={\n",
-    "                'size': 15,\n",
-    "                'opacity': 0.5,\n",
-    "                'line': {'width': 0.5, 'color': 'white'}\n",
-    "            },\n",
-    "            name=i[:20]\n",
-    "            \n",
-    "        )for i in dff.GEO.unique()\n",
-    "                ],\n",
-    "        'layout': go.Layout(\n",
-    "            xaxis={\n",
-    "                'title': xaxis_column_name,\n",
-    "                'type': 'linear' \n",
-    "            },\n",
-    "            yaxis={\n",
-    "                'title': yaxis_column_name,\n",
-    "                'type': 'linear' \n",
-    "            },\n",
-    "            margin={'l': 40, 'b': 40, 't': 10, 'r': 0},\n",
-    "            hovermode='closest'\n",
-    "        )\n",
-    "    }\n",
-    "\n",
-    "@app.callback(\n",
-    "    dash.dependencies.Output('indicator-graphic-b', 'figure'),\n",
-    "    [dash.dependencies.Input('country', 'value'),\n",
-    "     dash.dependencies.Input('yaxis-column-b', 'value')])\n",
-    "def update_graph_b(country_name, yaxis_column_b_name,):\n",
-    "    dff = df[df['GEO'] == country_name]\n",
-    "    \n",
-    "    return {\n",
-    "        'data': [go.Scatter(\n",
-    "            x=dff[dff['NA_ITEM'] == yaxis_column_b_name]['TIME'],\n",
-    "            y=dff[dff['NA_ITEM'] == yaxis_column_b_name]['Value'],\n",
-    "            text=dff[dff['NA_ITEM'] == yaxis_column_b_name]['Value'],\n",
-    "            mode='lines'\n",
-    "            \n",
-    "            \n",
-    "        )],\n",
-    "        'layout': go.Layout(\n",
-    "            xaxis={\n",
-    "                'title': 'YEAR',\n",
-    "                'type': 'linear' \n",
-    "            },\n",
-    "            yaxis={\n",
-    "                'title': yaxis_column_b_name,\n",
-    "                'type': 'linear' \n",
-    "            },\n",
-    "            margin={'l': 40, 'b': 40, 't': 10, 'r': 0},\n",
-    "            hovermode='closest'\n",
-    "        )\n",
-    "    }\n",
-    "\n",
-    "\n",
-    "if __name__ == '__main__':\n",
-    "    app.run_server()"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {},
-   "outputs": [],
-   "source": []
-  }
- ],
- "metadata": {
-  "kernelspec": {
-   "display_name": "Python 3",
-   "language": "python",
-   "name": "python3"
-  },
-  "language_info": {
-   "codemirror_mode": {
-    "name": "ipython",
-    "version": 3
-   },
-   "file_extension": ".py",
-   "mimetype": "text/x-python",
-   "name": "python",
-   "nbconvert_exporter": "python",
-   "pygments_lexer": "ipython3",
-   "version": "3.6.6"
-  }
- },
- "nbformat": 4,
- "nbformat_minor": 2
-}
+
+
+if __name__ == '__main__':
+    app.run_server()
+
+
+# In[ ]:
+
+
+
+
