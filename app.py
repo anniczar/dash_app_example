@@ -72,7 +72,7 @@ app.layout = html.Div([
         ],style={'width': '48%', 'float': 'right', 'display': 'inline-block'})
     ]),
 
-    dcc.Graph(id='indicator-graphic'), #what the fuck is this: graph one?
+    dcc.Graph(id='indicator-graphic'), 
 
     
 #insert slider for different years 
@@ -110,7 +110,7 @@ app.layout = html.Div([
     dcc.Graph(id='indicator-graphic-b')
     
 ])
-#why callback here and not before ?
+
 @app.callback(   #code that is passed as an argument to other code that is expected to call back (execute) the argument at a given time.
     dash.dependencies.Output('indicator-graphic', 'figure'),
     [dash.dependencies.Input('xaxis-column', 'value'),
